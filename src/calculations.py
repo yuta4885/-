@@ -62,9 +62,10 @@ def assignment_period_formula(start_cell, end_cell):
 
 
 def license_renewal_formula(expiry_cell):
-    """免許・資格の更新要否セルに入れるExcel数式"""
+    """免許・資格の更新要否セルに入れるExcel数式（期限切れ／要更新＝3か月以内／そろそろ＝6か月以内／不要の4段階）"""
     return (
         f'=IF({expiry_cell}="","",'
         f'IF({expiry_cell}<TODAY(),"期限切れ",'
-        f'IF({expiry_cell}<=TODAY()+180,"要","不要")))'
+        f'IF({expiry_cell}<=TODAY()+90,"要更新",'
+        f'IF({expiry_cell}<=TODAY()+180,"そろそろ","不要"))))'
     )

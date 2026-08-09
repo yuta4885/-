@@ -1,14 +1,34 @@
 # 社員スキルマップ ツールのエントリーポイント
 # 実行するたびに状況を判断して、次のどちらかを行う
 #   ・output/社員スキルマップ.xlsx が無ければ → サンプルデータ入りで新規作成
-#   ・すでにあれば                           → 入力内容から一覧表・抽出結果・個人シートを最新化
+#   ・すでにあれば                           → 入力内容から一覧表・抽出結果・個人詳細を最新化
 #
 # 実行方法（Windows）: 「実行.bat」をダブルクリックするだけ
 # 実行方法（コマンド）: python main.py
 
 import openpyxl
 
-from src import config, data_reader, extract, individual_sheet, list_sheet, sample_data, workbook_init
+from src import (
+    config,
+    data_reader,
+    effective_sheet,
+    extract,
+    individual_sheet,
+    list_sheet,
+    sample_data,
+    workbook_init,
+)
+
+
+def _build_outputs(wb, data):
+    """実効スキルの計算と、自動生成シート（隠しシート・一覧表・抽出結果・個人詳細）の再構築をまとめて行う"""
+    _ws, effective_skills, _review_flags = effective_sheet.build_effective_sheet(
+        wb, data["employees"], data["skills"], data["quality"], data["skill_items"]
+    )
+    data["effective_skills"] = effective_skills
+    list_sheet.build_list_sheet(wb, data["employees"], effective_skills, data["skill_items"])
+    extract.build_extract_sheet(wb, data)
+    individual_sheet.build_individual_sheet(wb, data)
 
 
 def init_workbook():
@@ -24,14 +44,12 @@ def init_workbook():
     wb.remove(wb.active)  # openpyxlが自動で作る空シートを削除
 
     workbook_init.build_input_sheets(wb, data, skill_items)
-    list_sheet.build_list_sheet(wb, data["employees"], data["skills"], skill_items)
-    extract.build_extract_sheet(wb, data)
-    individual_sheet.build_all_individual_sheets(wb, data)
+    _build_outputs(wb, data)
 
     wb.save(config.OUTPUT_FILE)
     print(f"作成しました：{config.OUTPUT_FILE}")
     print("「社員マスタ」などのシートに実際のデータを入力し、再度このスクリプトを実行すると")
-    print("一覧表・抽出結果・個人シートが最新の内容に更新されます。")
+    print("一覧表・抽出結果・個人詳細が最新の内容に更新されます。")
 
 
 def _warn_missing_skill_columns(skill_items):
@@ -47,8 +65,8 @@ def _warn_missing_skill_columns(skill_items):
 
 
 def update_workbook():
-    """既存のExcelブックの入力内容から、一覧表・抽出結果・個人シートを再生成する"""
-    print("既存のExcelブックを読み込み、一覧表・抽出結果・個人シートを最新化します…")
+    """既存のExcelブックの入力内容から、一覧表・抽出結果・個人詳細を再生成する"""
+    print("既存のExcelブックを読み込み、一覧表・抽出結果・個人詳細を最新化します…")
     data = data_reader.load_all(config.OUTPUT_FILE)
 
     if not data["employees"]:
@@ -58,9 +76,7 @@ def update_workbook():
     _warn_missing_skill_columns(data["skill_items"])
 
     wb = openpyxl.load_workbook(config.OUTPUT_FILE, data_only=False)
-    list_sheet.build_list_sheet(wb, data["employees"], data["skills"], data["skill_items"])
-    extract.build_extract_sheet(wb, data)
-    individual_sheet.build_all_individual_sheets(wb, data)
+    _build_outputs(wb, data)
     wb.save(config.OUTPUT_FILE)
 
     print(f"更新しました：{config.OUTPUT_FILE}")

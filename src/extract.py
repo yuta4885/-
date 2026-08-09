@@ -1,15 +1,16 @@
 # 「抽出結果」シート（自動生成・編集不可）を作成するファイル
-# あらかじめ用意した5つの条件で該当者を抽出し、それぞれ表にして出力する
-#   1. 海外出荷 Lv4以上
-#   2. 新人教育ができる人（Lv5）
+# あらかじめ用意した条件で該当者を抽出し、それぞれ表にして出力する
+#   1. 海外出荷 Lv4以上（実効レベル基準）
+#   2. 新人教育ができる人（Lv5、実効レベル基準）
 #   3. フォークリフト保有かつ使用中
 #   4. 安全教育 未受講者
 #   5. 資格の有効期限が6か月以内（期限切れ含む）
+#   6. スキルレベル見直し中の人（品質不具合による一時的な評価引き下げ）
 
-from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+from openpyxl.styles import Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-from src import calculations, config
+from src import calculations, config, skill_review
 
 HEADER_FILL = PatternFill("solid", fgColor="FF305496")
 HEADER_FONT = Font(color="FFFFFFFF", bold=True)
@@ -28,7 +29,7 @@ def preset_overseas_shipping(data, level=4):
         return [], f"「{item}」が作業項目に見つかりません（設定シートを確認してください）"
     names = _employee_name_map(data["employees"])
     rows = []
-    for emp_id, levels in data["skills"].items():
+    for emp_id, levels in data["effective_skills"].items():
         if levels.get(item, 0) >= level:
             rows.append({"社員番号": emp_id, "氏名": names.get(emp_id, ""), "習熟度": levels.get(item, 0)})
     return rows, None
@@ -39,7 +40,7 @@ def preset_trainer_level(data, item="新人教育", level=5):
         return [], f"「{item}」が作業項目に見つかりません（設定シートを確認してください）"
     names = _employee_name_map(data["employees"])
     rows = []
-    for emp_id, levels in data["skills"].items():
+    for emp_id, levels in data["effective_skills"].items():
         if levels.get(item, 0) >= level:
             rows.append({"社員番号": emp_id, "氏名": names.get(emp_id, ""), "習熟度": levels.get(item, 0)})
     return rows, None
@@ -76,7 +77,7 @@ def preset_safety_training_incomplete(data, edu_name="安全教育"):
 
 
 def preset_license_expiring(data, days=None):
-    days = days if days is not None else config.LICENSE_WARNING_DAYS
+    days = days if days is not None else config.LICENSE_CAUTION_DAYS
     names = _employee_name_map(data["employees"])
     rows = []
     for lic in data["licenses"]:
@@ -97,12 +98,37 @@ def preset_license_expiring(data, days=None):
     return rows, None
 
 
+def preset_skill_under_review(data):
+    names = _employee_name_map(data["employees"])
+    rows = []
+    for rec in data["quality"]:
+        item = rec.get("見直し対象スキル項目")
+        new_level = rec.get("見直し後レベル")
+        if not item or new_level in (None, ""):
+            continue
+        if not skill_review.is_review_active(rec):
+            continue
+        emp_id = rec.get("社員番号")
+        original_level = data["skills"].get(emp_id, {}).get(item, "")
+        recert_date = calculations.to_date(rec.get("再認定日"))
+        rows.append({
+            "社員番号": emp_id,
+            "氏名": names.get(emp_id, ""),
+            "対象項目": item,
+            "本来のレベル": original_level,
+            "見直し後レベル": new_level,
+            "再認定日": recert_date.strftime("%Y/%m") if recert_date else "未設定（要確認）",
+        })
+    return rows, None
+
+
 PRESETS = [
-    ("① 海外出荷 Lv4以上", preset_overseas_shipping),
-    ("② 新人教育ができる人（Lv5）", preset_trainer_level),
+    ("① 海外出荷 Lv4以上（実効レベル）", preset_overseas_shipping),
+    ("② 新人教育ができる人（Lv5・実効レベル）", preset_trainer_level),
     ("③ フォークリフト保有かつ使用中", preset_forklift_in_use),
     ("④ 安全教育 未受講者", preset_safety_training_incomplete),
     ("⑤ 資格の有効期限が6か月以内（期限切れ含む）", preset_license_expiring),
+    ("⑥ スキルレベル見直し中の人（品質不具合による一時的な引き下げ）", preset_skill_under_review),
 ]
 
 

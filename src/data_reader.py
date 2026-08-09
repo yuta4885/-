@@ -28,15 +28,18 @@ def _read_rows(ws, headers, key_header, header_row=1):
 
 
 def read_settings(wb):
-    """設定シートから作業項目一覧を読み込む"""
+    """設定シートから作業項目一覧を読み込む。
+    作業項目リストの下には等級別目標スキルレベル表など別の表が続くため、
+    最初の空白行で読み込みを打ち切る（作業項目は必ず2行目から連続して並ぶ前提）"""
     if config.SHEET_SETTINGS not in wb.sheetnames:
         return list(config.DEFAULT_SKILL_ITEMS)
     ws = wb[config.SHEET_SETTINGS]
     items = []
     for r in range(2, ws.max_row + 1):
         value = ws.cell(row=r, column=1).value
-        if value not in (None, ""):
-            items.append(str(value).strip())
+        if value in (None, ""):
+            break
+        items.append(str(value).strip())
     return items or list(config.DEFAULT_SKILL_ITEMS)
 
 
@@ -96,6 +99,39 @@ def read_skills(wb, skill_items):
     return skills
 
 
+def read_grade_targets(wb, skill_items):
+    """設定シートの『等級別目標スキルレベル』表を読み込む。
+    GAP分析（実効レベルー目標レベル）で使う"""
+    if config.SHEET_SETTINGS not in wb.sheetnames:
+        return {}
+    ws = wb[config.SHEET_SETTINGS]
+
+    title_row = None
+    for r in range(1, ws.max_row + 1):
+        if ws.cell(row=r, column=1).value == config.SETTINGS_TARGET_TITLE:
+            title_row = r
+            break
+    if title_row is None:
+        return {}
+
+    header_row = title_row + 1
+    headers = [ws.cell(row=header_row, column=c).value for c in range(1, ws.max_column + 1)]
+    item_cols = {item: headers.index(item) + 1 for item in skill_items if item in headers}
+
+    targets = {}
+    for r in range(header_row + 1, ws.max_row + 1):
+        grade = ws.cell(row=r, column=1).value
+        if grade in (None, ""):
+            break
+        levels = {}
+        for item in skill_items:
+            col = item_cols.get(item)
+            value = ws.cell(row=r, column=col).value if col else None
+            levels[item] = int(value) if isinstance(value, (int, float)) else 0
+        targets[grade] = levels
+    return targets
+
+
 def load_all(path):
     """ブック全体を読み込み、各シートのデータをまとめて返す"""
     wb = openpyxl.load_workbook(path, data_only=False)
@@ -109,6 +145,7 @@ def load_all(path):
         "internal_edu": read_internal_edu(wb),
         "quality": read_quality(wb),
         "skills": read_skills(wb, skill_items),
+        "grade_targets": read_grade_targets(wb, skill_items),
     }
     wb.close()
     return data
