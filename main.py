@@ -30,6 +30,13 @@ def _build_outputs(wb, data):
     extract.build_extract_sheet(wb, data)
     individual_sheet.build_individual_sheet(wb, data)
 
+    # 個人詳細シートは社員番号を選び直すたびに再計算が必要なため、
+    # 計算方法を必ず「自動」にし、ファイルを開いた時にも全体を再計算させる。
+    # （Excel側の設定で「手動計算」になっていると、この指定が上書きされ、選択を
+    # 変えてもF9キーを押すまで表示が更新されない場合があります）
+    wb.calculation.calcMode = "auto"
+    wb.calculation.fullCalcOnLoad = True
+
 
 def init_workbook():
     """サンプルデータ10人分で新規にExcelブックを作成する（初回実行時）"""
