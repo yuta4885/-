@@ -1,0 +1,84 @@
+' ============================================================
+' 「個人詳細」シートを、社員マスタの全員分についてまとめて
+' PDF出力または印刷するためのマクロです。
+'
+' 【重要】このコードはopenpyxl（Excelブックを作るPythonの部品）では
+' 直接組み込めません。VBAはExcel自身の機能のため、下記の手順で
+' 一度だけご自身のExcelに貼り付けてください（README.mdの
+' 「6. 全員分をまとめて印刷する」も参照）。
+' ============================================================
+
+Option Explicit
+
+' 個人詳細シートを、社員マスタの全員分についてPDFに書き出す（推奨・紙を使わず確認できます）
+Sub 個人詳細_全員PDF出力()
+    Dim wsList As Worksheet, wsDetail As Worksheet
+    Dim outFolder As String
+    Dim lastRow As Long, i As Long
+    Dim empID As String, empName As String
+    Dim safeName As String
+
+    Set wsList = ThisWorkbook.Sheets("社員マスタ")
+    Set wsDetail = ThisWorkbook.Sheets("個人詳細")
+
+    outFolder = ThisWorkbook.Path & "\個人シートPDF\"
+    If Dir(outFolder, vbDirectory) = "" Then
+        MkDir outFolder
+    End If
+
+    lastRow = wsList.Cells(wsList.Rows.Count, "A").End(xlUp).Row
+
+    Application.ScreenUpdating = False
+
+    For i = 2 To lastRow
+        empID = wsList.Cells(i, "A").Value
+        If empID <> "" Then
+            wsDetail.Range("G2").Value = empID
+            Application.CalculateFullRebuild
+            DoEvents
+
+            empName = wsDetail.Range("I3").Value
+            safeName = Replace(Replace(Replace(empName, "/", "_"), "\", "_"), ":", "_")
+            If safeName = "" Then safeName = "不明"
+
+            wsDetail.ExportAsFixedFormat Type:=xlTypePDF, _
+                Filename:=outFolder & empID & "_" & safeName & ".pdf", _
+                Quality:=xlQualityStandard, IncludeDocProperties:=False, _
+                IgnorePrintAreas:=False, OpenAfterPublish:=False
+        End If
+    Next i
+
+    Application.ScreenUpdating = True
+    MsgBox "全員分のPDFを出力しました。" & vbCrLf & outFolder, vbInformation
+End Sub
+
+' 個人詳細シートを、社員マスタの全員分について直接印刷する
+Sub 個人詳細_全員印刷()
+    Dim wsList As Worksheet, wsDetail As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim empID As String
+
+    Set wsList = ThisWorkbook.Sheets("社員マスタ")
+    Set wsDetail = ThisWorkbook.Sheets("個人詳細")
+
+    lastRow = wsList.Cells(wsList.Rows.Count, "A").End(xlUp).Row
+
+    If MsgBox(lastRow - 1 & "人分をプリンターに印刷します。よろしいですか？", vbYesNo + vbQuestion) <> vbYes Then
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+
+    For i = 2 To lastRow
+        empID = wsList.Cells(i, "A").Value
+        If empID <> "" Then
+            wsDetail.Range("G2").Value = empID
+            Application.CalculateFullRebuild
+            DoEvents
+            wsDetail.PrintOut
+        End If
+    Next i
+
+    Application.ScreenUpdating = True
+    MsgBox "印刷が完了しました。", vbInformation
+End Sub
