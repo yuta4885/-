@@ -34,6 +34,8 @@ Private Sub Worksheet_SelectionChange(ByVal Target As Range)
         Application.EnableEvents = False
         If st.Value = "退勤" Then st.Value = "出勤" Else st.Value = "退勤"
         Application.EnableEvents = True
+        ' あいさつ（2秒で自動的に閉じる）
+        If st.Value = "出勤" Then Call Greet("おはようございます") Else Call Greet("お疲れ様でした")
     End If
 
     ' 同じ場所をもう一度タッチしても反応するよう、選択を余白セルに逃がす
@@ -44,4 +46,10 @@ Private Sub ResetSelection()
     Application.EnableEvents = False
     Me.Range("A1").Select
     Application.EnableEvents = True
+End Sub
+
+Private Sub Greet(ByVal txt As String)
+    On Error Resume Next
+    CreateObject("WScript.Shell").Popup txt, 2, "出勤退勤ボード", vbInformation
+    On Error GoTo 0
 End Sub
