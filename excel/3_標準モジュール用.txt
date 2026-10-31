@@ -2,8 +2,9 @@
 Option Explicit
 
 Public NextSave As Date
+Public PendingAddr As String
 
-' 1分ごとの自動上書き保存を開始する
+' ---------- 1分ごとの自動上書き保存 ----------
 Public Sub StartAutoSave()
     NextSave = Now + TimeSerial(0, 1, 0)
     Application.OnTime NextSave, "'" & ThisWorkbook.Name & "'!AutoSave"
@@ -20,4 +21,167 @@ End Sub
 Public Sub StopAutoSave()
     On Error Resume Next
     Application.OnTime NextSave, "'" & ThisWorkbook.Name & "'!AutoSave", , False
+End Sub
+
+' ---------- 大きな確認画面 ----------
+Public Sub ShowConfirm(ByVal st As Range)
+    Dim ws As Worksheet, box As Shape, btn As Shape
+    Dim nm As String, toIn As Boolean
+    Dim L As Single, T As Single
+
+    Set ws = st.Worksheet
+    Call CloseConfirm
+    PendingAddr = st.Address
+    nm = st.Offset(-1, 0).Value
+    toIn = (st.Value = "退勤")          ' 退勤中の人 → 出勤しますか？
+
+    L = (ws.Range("J1").Left - 560) / 2
+    T = ws.Range("A5").Top
+
+    Application.EnableEvents = False
+
+    ' 本体（名前とメッセージ）
+    Set box = ws.Shapes.AddShape(msoShapeRoundedRectangle, L, T, 560, 290)
+    With box
+        .Name = "CfmBox"
+        .Fill.ForeColor.RGB = RGB(33, 42, 56)
+        .Line.ForeColor.RGB = RGB(255, 255, 255)
+        .Line.Weight = 3
+        .Shadow.Visible = msoFalse
+        With .TextFrame2
+            .VerticalAnchor = msoAnchorTop
+            .MarginTop = 24
+            .TextRange.Text = nm & " さん" & vbCr & IIf(toIn, "出勤しますか？", "退勤しますか？")
+            .TextRange.Font.Bold = msoTrue
+            .TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+            .TextRange.Paragraphs(1).Font.Size = 44
+            .TextRange.Paragraphs(2).Font.Size = 38
+        End With
+    End With
+
+    ' 「いいえ」ボタン
+    Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, L + 25, T + 175, 250, 95)
+    With btn
+        .Name = "CfmNo"
+        .Fill.ForeColor.RGB = RGB(33, 42, 56)
+        .Line.ForeColor.RGB = RGB(154, 168, 191)
+        .Line.Weight = 2.5
+        .Shadow.Visible = msoFalse
+        .OnAction = "'" & ThisWorkbook.Name & "'!ConfirmNo"
+        .TextFrame2.TextRange.Text = "いいえ"
+        .TextFrame2.TextRange.Font.Size = 40
+        .TextFrame2.TextRange.Font.Bold = msoTrue
+        .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+    End With
+
+    ' 「出勤する」「退勤する」ボタン
+    Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, L + 285, T + 175, 250, 95)
+    With btn
+        .Name = "CfmYes"
+        .Line.Weight = 0.75
+        .Shadow.Visible = msoFalse
+        .OnAction = "'" & ThisWorkbook.Name & "'!ConfirmYes"
+        If toIn Then
+            .Fill.ForeColor.RGB = RGB(185, 240, 198)
+            .Line.ForeColor.RGB = RGB(185, 240, 198)
+            .TextFrame2.TextRange.Text = "出勤する"
+            .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(18, 49, 28)
+        Else
+            .Fill.ForeColor.RGB = RGB(214, 47, 47)
+            .Line.ForeColor.RGB = RGB(214, 47, 47)
+            .TextFrame2.TextRange.Text = "退勤する"
+            .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        End If
+        .TextFrame2.TextRange.Font.Size = 40
+        .TextFrame2.TextRange.Font.Bold = msoTrue
+    End With
+
+    Application.EnableEvents = True
+End Sub
+
+Public Sub CloseConfirm()
+    Dim ws As Worksheet, n As Variant
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("ボード")
+    For Each n In Array("CfmBox", "CfmNo", "CfmYes")
+        ws.Shapes(n).Delete
+    Next n
+    PendingAddr = ""
+    On Error GoTo 0
+End Sub
+
+' 「いいえ」
+Public Sub ConfirmNo()
+    Call CloseConfirm
+    Call DeselectAll
+End Sub
+
+' 「出勤する」「退勤する」
+Public Sub ConfirmYes()
+    Dim ws As Worksheet, st As Range, toIn As Boolean
+
+    Set ws = ThisWorkbook.Worksheets("ボード")
+    If PendingAddr <> "" Then
+        Set st = ws.Range(PendingAddr)
+        Application.EnableEvents = False
+        If st.Value = "退勤" Then
+            st.Value = "出勤"
+            toIn = True
+        Else
+            st.Value = "退勤"
+            toIn = False
+        End If
+        Application.EnableEvents = True
+        Call CloseConfirm
+        Call DeselectAll
+        Call Greet(ws, toIn)
+    Else
+        Call CloseConfirm
+        Call DeselectAll
+    End If
+End Sub
+
+Private Sub DeselectAll()
+    Application.EnableEvents = False
+    ThisWorkbook.Worksheets("ボード").Range("A1").Select
+    Application.EnableEvents = True
+End Sub
+
+' ---------- あいさつ（1.5秒で消える） ----------
+Public Sub Greet(ByVal ws As Worksheet, ByVal isIn As Boolean)
+    Const SECONDS As Single = 1.5
+    Dim shp As Shape, t As Single
+
+    On Error GoTo Done
+    Application.EnableEvents = False
+    Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, 0, 0, 520, 110)
+    With shp
+        .Name = "GreetBox"
+        .Left = (ws.Range("J1").Left - .Width) / 2
+        .Top = ws.Range("A9").Top
+        .Line.ForeColor.RGB = RGB(255, 255, 255)
+        .Line.Weight = 4
+        .Shadow.Visible = msoFalse
+        If isIn Then
+            .Fill.ForeColor.RGB = RGB(185, 240, 198)
+            .TextFrame2.TextRange.Text = "おはようございます"
+            .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(18, 49, 28)
+        Else
+            .Fill.ForeColor.RGB = RGB(214, 47, 47)
+            .TextFrame2.TextRange.Text = "お疲れ様でした"
+            .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        End If
+        .TextFrame2.TextRange.Font.Size = 40
+        .TextFrame2.TextRange.Font.Bold = msoTrue
+    End With
+
+    t = Timer
+    Do While Timer - t < SECONDS And Timer >= t
+        DoEvents
+    Loop
+
+Done:
+    On Error Resume Next
+    ws.Shapes("GreetBox").Delete
+    Application.EnableEvents = True
 End Sub
