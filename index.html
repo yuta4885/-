@@ -11,8 +11,8 @@
     --line: #34415a;
     --text: #eef2f8;
     --muted: #9aa8bf;
-    --white: #ffffff;
-    --white-text: #1a2230;
+    --on: #b9f0c6;
+    --on-text: #12311c;
     --red: #d62f2f;
     --red-text: #ffffff;
     --accent: #3b82f6;
@@ -53,7 +53,7 @@
   #stats .label { font-size: 24px; color: var(--muted); }
   #stats .num { white-space: nowrap; font-size: 64px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
   #stats .num small { font-size: 24px; font-weight: 500; margin-left: 2px; }
-  #stats .present .num { color: var(--white); }
+  #stats .present .num { color: var(--on); }
   #stats .absent .num { color: #ff6b6b; }
   #stats .rate .num { color: #7ee0a0; }
   #bar { height: 16px; border-radius: 8px; background: #3a1d22; margin-top: 12px; overflow: hidden; }
@@ -69,7 +69,7 @@
   }
   .tile .name { font-weight: 800; white-space: nowrap; line-height: 1.15; }
   .tile .st { font-size: 22px; font-weight: 600; margin-top: 4px; opacity: .8; }
-  .tile.on  { background: var(--white); color: var(--white-text); }
+  .tile.on  { background: var(--on); color: var(--on-text); }
   .tile.off { background: var(--red);   color: var(--red-text); }
   .tile:active { filter: brightness(.88); }
 
@@ -146,7 +146,20 @@
   #c-msg { font-size: 44px; font-weight: 700; margin-top: 10px; }
   #cbox .btns { display: flex; gap: 20px; margin-top: 32px; }
   #cbox .btns button { flex: 1; min-height: 110px; font-size: 40px; border-radius: 16px; }
-  #c-ok.to-on  { background: var(--white); border-color: var(--white); color: var(--white-text); }
+  #c-ok.to-on  { background: var(--on); border-color: var(--on); color: var(--on-text); }
+
+  /* あいさつ表示（2秒で消える） */
+  #greet {
+    position: absolute; left: 50%; top: 50%; z-index: 120;
+    transform: translate(-50%, -50%) scale(.9);
+    padding: 40px 90px; border-radius: 28px; border: 6px solid #fff;
+    font-size: 96px; font-weight: 800; white-space: nowrap;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+  }
+  #greet.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #greet.in  { background: var(--on); color: var(--on-text); }
+  #greet.out { background: var(--red); color: var(--red-text); }
   #c-ok.to-off { background: var(--red); border-color: var(--red); color: var(--red-text); }
 </style>
 </head>
@@ -190,6 +203,8 @@
       </div>
     </div>
   </div>
+
+  <div id="greet"></div>
 
   <div id="modal">
     <div id="dlg">
@@ -371,9 +386,21 @@
   }
   function closeConfirm() { $('confirm').classList.remove('show'); pending = null; }
   $('c-ok').onclick = () => {
-    if (pending) { pending.on = !pending.on; save(); renderAll(); }
+    if (pending) {
+      pending.on = !pending.on;
+      save(); renderAll();
+      greet(pending.on);
+    }
     closeConfirm();
   };
+  let greetTimer = null;
+  function greet(isIn) {
+    const g = $('greet');
+    g.textContent = isIn ? 'おはようございます' : 'お疲れ様でした';
+    g.className = (isIn ? 'in' : 'out') + ' show';
+    clearTimeout(greetTimer);
+    greetTimer = setTimeout(() => g.classList.remove('show'), 2000);
+  }
   $('c-cancel').onclick = closeConfirm;
   $('confirm').addEventListener('pointerdown', e => { if (e.target === $('confirm')) closeConfirm(); });
 
