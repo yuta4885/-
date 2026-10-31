@@ -36,8 +36,8 @@
     position: absolute; inset: 0; z-index: -1; pointer-events: none;
     --veil: .72;
     background:
-      linear-gradient(rgba(20,26,36,var(--veil)), rgba(20,26,36,var(--veil)));
-    /* 背景画像を使う場合は、上の行の後ろに「, url(画像ファイル名) right center / cover no-repeat」を足す */
+      linear-gradient(rgba(20,26,36,var(--veil)), rgba(20,26,36,var(--veil))),
+      url(bg.jpg) right center / cover no-repeat;
   }
 
   /* 左上: 日付と曜日 */
