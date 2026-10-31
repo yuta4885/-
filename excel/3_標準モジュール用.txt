@@ -1,0 +1,23 @@
+' 貼り付け先: VBAエディタで 挿入 → 標準モジュール を追加し、そのコードウィンドウ
+Option Explicit
+
+Public NextSave As Date
+
+' 1分ごとの自動上書き保存を開始する
+Public Sub StartAutoSave()
+    NextSave = Now + TimeSerial(0, 1, 0)
+    Application.OnTime NextSave, "'" & ThisWorkbook.Name & "'!AutoSave"
+End Sub
+
+Public Sub AutoSave()
+    On Error Resume Next
+    ' 一度も保存していないファイルは保存しない（先に .xlsm で保存しておく）
+    If ThisWorkbook.Path <> "" Then ThisWorkbook.Save
+    On Error GoTo 0
+    Call StartAutoSave
+End Sub
+
+Public Sub StopAutoSave()
+    On Error Resume Next
+    Application.OnTime NextSave, "'" & ThisWorkbook.Name & "'!AutoSave", , False
+End Sub

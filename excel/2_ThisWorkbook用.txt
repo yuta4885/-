@@ -1,0 +1,10 @@
+' 貼り付け先: 左のツリーの「ThisWorkbook」をダブルクリックして開くコードウィンドウ
+Option Explicit
+
+Private Sub Workbook_Open()
+    Call StartAutoSave
+End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    Call StopAutoSave
+End Sub

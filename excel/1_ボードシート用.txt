@@ -1,8 +1,8 @@
-' 貼り付け先: 「ボード」シートのコードウィンドウ（シート名を右クリック→コードの表示）
+' 貼り付け先: 「ボード」シート（Sheet1）のコードウィンドウ
 Option Explicit
 
 Private Sub Worksheet_SelectionChange(ByVal Target As Range)
-    Dim c As Range, st As Range
+    Dim c As Range, st As Range, nm As String, msg As String
 
     If Target.Cells.Count <> 1 Then Exit Sub
     Set c = Target.Cells(1)
@@ -17,7 +17,7 @@ Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     ' 編集中は何もしない（名前の変更やセルの移動ができる）
     If Me.Range("I1").Value = "編集中" Then Exit Sub
 
-    ' 名前セル（1つ下が状態セル）または状態セルをタッチしたら切り替え
+    ' 名前セル、または状態セル（名前の1つ下）をタッチしたとき
     If c.Value = "出勤" Or c.Value = "退勤" Then
         Set st = c
     ElseIf c.Offset(1, 0).Value = "出勤" Or c.Offset(1, 0).Value = "退勤" Then
@@ -26,9 +26,15 @@ Private Sub Worksheet_SelectionChange(ByVal Target As Range)
         Exit Sub
     End If
 
-    Application.EnableEvents = False
-    If st.Value = "出勤" Then st.Value = "退勤" Else st.Value = "出勤"
-    Application.EnableEvents = True
+    nm = st.Offset(-1, 0).Value
+    If st.Value = "退勤" Then msg = "出勤しますか？" Else msg = "退勤しますか？"
+
+    ' 確認ダイアログ（はい＝切り替え／いいえ＝そのまま）
+    If MsgBox(nm & " さん" & vbCrLf & vbCrLf & msg, vbYesNo + vbQuestion + vbDefaultButton2, "出勤退勤の確認") = vbYes Then
+        Application.EnableEvents = False
+        If st.Value = "退勤" Then st.Value = "出勤" Else st.Value = "退勤"
+        Application.EnableEvents = True
+    End If
 
     ' 同じ場所をもう一度タッチしても反応するよう、選択を余白セルに逃がす
     Call ResetSelection
