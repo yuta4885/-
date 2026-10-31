@@ -156,7 +156,7 @@
   #cbox .btns button { flex: 1; min-height: 110px; font-size: 40px; border-radius: 16px; }
   #c-ok.to-on  { background: var(--on); border-color: var(--on); color: var(--on-text); }
 
-  /* あいさつ表示（2秒で消える） */
+  /* あいさつ表示（1.5秒で消える） */
   #greet {
     position: absolute; left: 50%; top: 50%; z-index: 120;
     transform: translate(-50%, -50%) scale(.9);
@@ -408,7 +408,7 @@
     g.textContent = isIn ? 'おはようございます' : 'お疲れ様でした';
     g.className = (isIn ? 'in' : 'out') + ' show';
     clearTimeout(greetTimer);
-    greetTimer = setTimeout(() => g.classList.remove('show'), 2000);
+    greetTimer = setTimeout(() => g.classList.remove('show'), 1500);
   }
   $('c-cancel').onclick = closeConfirm;
   $('confirm').addEventListener('pointerdown', e => { if (e.target === $('confirm')) closeConfirm(); });

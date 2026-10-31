@@ -34,8 +34,8 @@ Private Sub Worksheet_SelectionChange(ByVal Target As Range)
         Application.EnableEvents = False
         If st.Value = "退勤" Then st.Value = "出勤" Else st.Value = "退勤"
         Application.EnableEvents = True
-        ' あいさつ（2秒で自動的に閉じる）
-        If st.Value = "出勤" Then Call Greet("おはようございます") Else Call Greet("お疲れ様でした")
+        ' あいさつ（1.5秒で自動的に消える）
+        If st.Value = "出勤" Then Call Greet("おはようございます", True) Else Call Greet("お疲れ様でした", False)
     End If
 
     ' 同じ場所をもう一度タッチしても反応するよう、選択を余白セルに逃がす
@@ -48,8 +48,40 @@ Private Sub ResetSelection()
     Application.EnableEvents = True
 End Sub
 
-Private Sub Greet(ByVal txt As String)
+Private Sub Greet(ByVal txt As String, ByVal isIn As Boolean)
+    Const SECONDS As Single = 1.5
+    Dim shp As Shape, t As Single
+
+    On Error GoTo Done
+    Application.EnableEvents = False
+    Set shp = Me.Shapes.AddShape(msoShapeRoundedRectangle, 0, 0, 520, 110)
+    With shp
+        .Name = "GreetBox"
+        .Left = (Me.Range("J1").Left - .Width) / 2
+        .Top = Me.Range("A9").Top
+        If isIn Then
+            .Fill.ForeColor.RGB = RGB(185, 240, 198)
+        Else
+            .Fill.ForeColor.RGB = RGB(214, 47, 47)
+        End If
+        .Line.ForeColor.RGB = RGB(255, 255, 255)
+        .Line.Weight = 4
+        With .TextFrame2.TextRange
+            .Text = txt
+            .Font.Size = 40
+            .Font.Bold = msoTrue
+            If isIn Then .Font.Fill.ForeColor.RGB = RGB(18, 49, 28) Else .Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        End With
+    End With
+
+    ' 1.5秒表示（その間も画面は更新される）
+    t = Timer
+    Do While Timer - t < SECONDS And Timer >= t
+        DoEvents
+    Loop
+
+Done:
     On Error Resume Next
-    CreateObject("WScript.Shell").Popup txt, 2, "出勤退勤ボード", vbInformation
-    On Error GoTo 0
+    Me.Shapes("GreetBox").Delete
+    Application.EnableEvents = True
 End Sub
