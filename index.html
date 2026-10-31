@@ -131,6 +131,23 @@
   }
   #dlg .btns { display: flex; gap: 12px; margin-top: 22px; justify-content: flex-end; }
   #dlg .btns .sp { flex: 1; }
+
+  /* 出勤・退勤の確認 */
+  #confirm {
+    position: absolute; inset: 0; display: none; z-index: 110;
+    background: rgba(0,0,0,.6); align-items: center; justify-content: center;
+  }
+  #confirm.show { display: flex; }
+  #cbox {
+    width: 760px; padding: 36px 40px 32px; text-align: center;
+    background: var(--panel); border: 3px solid var(--line); border-radius: 22px;
+  }
+  #c-name { font-size: 64px; font-weight: 800; line-height: 1.2; word-break: break-all; }
+  #c-msg { font-size: 44px; font-weight: 700; margin-top: 10px; }
+  #cbox .btns { display: flex; gap: 20px; margin-top: 32px; }
+  #cbox .btns button { flex: 1; min-height: 110px; font-size: 40px; border-radius: 16px; }
+  #c-ok.to-on  { background: var(--white); border-color: var(--white); color: var(--white-text); }
+  #c-ok.to-off { background: var(--red); border-color: var(--red); color: var(--red-text); }
 </style>
 </head>
 <body>
@@ -161,6 +178,17 @@
       <div class="cell rate"><div class="label">出勤割合</div><div class="num"><span id="n-rate">0</span><small>%</small></div></div>
     </div>
     <div id="bar"><i></i></div>
+  </div>
+
+  <div id="confirm">
+    <div id="cbox">
+      <div id="c-name"></div>
+      <div id="c-msg"></div>
+      <div class="btns">
+        <button id="c-cancel">いいえ</button>
+        <button id="c-ok"></button>
+      </div>
+    </div>
   </div>
 
   <div id="modal">
@@ -330,10 +358,24 @@
     });
     el.addEventListener('pointercancel', () => { start = null; el.classList.remove('dragging'); });
   }
+  /* ---------- 出勤・退勤の確認 ---------- */
+  let pending = null;
   function toggle(p) {
-    p.on = !p.on;
-    save(); renderAll();
+    pending = p;
+    $('c-name').textContent = p.name + ' さん';
+    $('c-msg').textContent = p.on ? '退勤しますか？' : '出勤しますか？';
+    const ok = $('c-ok');
+    ok.textContent = p.on ? '退勤する' : '出勤する';
+    ok.className = p.on ? 'to-off' : 'to-on';
+    $('confirm').classList.add('show');
   }
+  function closeConfirm() { $('confirm').classList.remove('show'); pending = null; }
+  $('c-ok').onclick = () => {
+    if (pending) { pending.on = !pending.on; save(); renderAll(); }
+    closeConfirm();
+  };
+  $('c-cancel').onclick = closeConfirm;
+  $('confirm').addEventListener('pointerdown', e => { if (e.target === $('confirm')) closeConfirm(); });
 
   /* ---------- ダイアログ ---------- */
   let editing = null;
